@@ -29,7 +29,7 @@ namespace discordbot
 
 			//  You can assign your bot token to a string, and pass that in to connect.
 			//  This is, however, insecure, particularly if you plan to have your code hosted in a public repository.
-			var token = "OTY4Mzg5MTk5MTI2NDc0NzUy.YmeIuA.rqAhAGfbZnKxmswdQskbNegxmC8";
+			var token = "***";
 
 			// Some alternative options would be to keep your token in an Environment Variable or a standalone file.
 			// var token = Environment.GetEnvironmentVariable("NameOfYourEnvironmentVariable");
