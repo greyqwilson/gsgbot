@@ -36,8 +36,9 @@ namespace discordbot
 		//~getgame -> Risk of Rain 2, CK2, HoI4...
 		[Command("getgame")]
 		[Summary("Prints a list of games that can be played with all members" +
-			"currently in voice chat channel")]
-		public async Task GetGame(Discord.WebSocket.SocketVoiceChannel channel)
+			"currently in voice chat channel. add a space then a 1 to get a random game")]
+		public async Task GetGame([Summary("The voice channel to be checked")] SocketVoiceChannel channel,
+								  [Summary("Operating mode. 0 for default, 1 for random")] int mode = 0)
 		{
 			await ReplyAsync("Looking for matches in " + channel.Name + ":");
 			//Get list of people currently connected to voice
@@ -111,6 +112,8 @@ namespace discordbot
 					{
 						//Add the game to matches
 						matches.Add(game);
+						//Reset countedmatches
+						countedMatches = 0;
 						//Replenish user list of games (already done above with shuffle)
 						//here with a foreach or after each removal
 
@@ -126,11 +129,45 @@ namespace discordbot
 			}
 			//Reget number of users in chat
 			numUsers = users.Count;
-			await ReplyAsync("Of the " + numUsers + " in chat, " + usersNoLibrary + " have no libraries.");
-			if (allMatches.Length != 0)
+			//await ReplyAsync("Of the " + numUsers + " in chat, " + usersNoLibrary + " have no libraries.");
+			if (allMatches.Length != 0 && mode == 0)
 			{
-				await ReplyAsync("Everyone has:\n" + allMatches);
+				//Discord max message length is 2000 characters
+				if (allMatches.Length < 2000)
+				{
+					await ReplyAsync("Everyone has:\n" + allMatches);
+				}
+				else
+				{
+					IEnumerable<string> pages = FileOps.StringSplit(allMatches, 1900);
+					int i = 1;
+					foreach(string page in pages)
+					{
+						await ReplyAsync("Page " + i + ":\n" + page);
+						i++;
+						System.Threading.Thread.Sleep(300);
+					}
+					//int numPages = allMatches.Length % 1900;
+					//int splitIndex = 1900;
+					//for (int i=1; i <= numPages; i++)
+					//{
+					//	String userGames2 = allMatches.Substring(splitIndex, 1900);
+					//	allMatches.
+					//	userGames2.Trim();
+					//	await ReplyAsync(allMatches);
+					//	System.Threading.Thread.Sleep(1000);
+					//	await ReplyAsync(userGames2);
+					//}
+				}
+				
 			}
+			else if (allMatches.Length != 0 && mode == 1)
+			{
+				Random random = new Random(Guid.NewGuid().GetHashCode()); //thank you joppiesaus from stackoverflow
+				int randnum = random.Next() % (matches.Count);
+				string randomGame = matches[randnum];
+				await ReplyAsync("Random game is...\n" + randomGame);
+			}	
 			else
 			{
 				await ReplyAsync("No one has any matching games in their library.");
@@ -216,9 +253,7 @@ namespace discordbot
 
 		[Command("addgame")]
 		[Summary("Adds a game to a user's GameLibrary")]
-		public async Task AddGame([Summary("The user to create a library for")]
-										Discord.WebSocket.SocketUser user = null,
-									[Summary("Game to add to user's library")]
+		public async Task AddGame([Summary("Game to add to user's library")]
 									string game = null)
 		{
 			libraryDic = FileOps.MakeDictionary();
@@ -229,14 +264,14 @@ namespace discordbot
 				libraryDic = new Dictionary<ulong, GameLibrary>();
 			}
 
-			await ReplyAsync("Attempting to add " + game + " to " + user.Username + "'s library.");
+			await ReplyAsync("Attempting to add " + game + " to " + Context.User.Username + "'s library.");
 			//await ReplyAsync("DEBUG: GameLibrary Key = " + libraryDic[user.Id].Owner + " (" + user.Username + ")");
 			//Might be able to fix all of this with a libraryDic.tryAdd
 			//Check to see if user has library, if not either make library or tell to make library
-			if (libraryDic.ContainsKey(user.Id) == true)
+			if (libraryDic.ContainsKey(Context.User.Id) == true)
 			{
 				//Check to see if game already exists in their library
-				if (libraryDic[user.Id].AddGame(game) == true)
+				if (libraryDic[Context.User.Id].AddGame(game) == true)
 				{
 					FileOps.SaveDictionary(libraryDic);
 					//If it doesn't, add the game
@@ -253,9 +288,7 @@ namespace discordbot
 
 		[Command("removegame")]
 		[Summary("Removes a game from a user's GameLibrary")]
-		public async Task RemoveGame([Summary("The user to create a library for")]
-											Discord.WebSocket.SocketUser user = null,
-										[Summary("Game to remove from user's library")]
+		public async Task RemoveGame([Summary("Game to remove from user's library")]
 										string game = null)
 		{
 			//Open json
@@ -268,11 +301,11 @@ namespace discordbot
 				return;
 			}
 			//Check to see if user has library, if not either make library or tell to make library
-			if (libraryDic.ContainsKey(user.Id) == true)
+			if (libraryDic.ContainsKey(Context.User.Id) == true)
 			{
 
 				//Check to see if game already exists in their library
-				if (libraryDic[user.Id].RemoveGame(game) == true)
+				if (libraryDic[Context.User.Id].RemoveGame(game) == true)
 				{
 					//If it does remove the game
 					FileOps.SaveDictionary(libraryDic);
@@ -332,9 +365,21 @@ namespace discordbot
 					String userGames = "";
 					foreach (string game in games)
 					{
-						userGames += game + "\n";
+						userGames += game + ", ";
 					}
-					await ReplyAsync(userGames);
+					//Discord max message length is 2000 characters
+					if (userGames.Length < 2000)
+					{
+						await ReplyAsync(userGames);
+					}
+					else
+					{
+						String userGames2 = userGames.Substring(1900, 1900);
+						userGames2.Trim();
+						await ReplyAsync(userGames);
+						System.Threading.Thread.Sleep(1000);
+						await ReplyAsync(userGames2);
+					}
 				}
 				else
 				{
@@ -488,6 +533,77 @@ namespace discordbot
 				}
 			}
 			await ReplyAsync("Attempted to add guild: " + allUsers.Count);
+		}
+
+		[Command("linksteam")]
+		[Summary("Takes the library associated with the entered Steam account and downloads it for use in findgame.")]
+		public async Task LinkSteamLib([Summary("The user's Steam ID.")] String steamInfo)
+		{
+			//Should try to do some checking before attempting to create library a second time.
+			
+			SteamWebAPI.SteamWebAPIHandler webAPI = new SteamWebAPI.SteamWebAPIHandler();
+			
+			//See if they entered an ID
+			String steamPersonaName = webAPI.GetSteamPersonaName(steamInfo);
+			String steamId;
+
+			//If they gave a valid steam ID
+			if (steamPersonaName != null)
+			{
+				await ReplyAsync("Detected Steam profile name: " + steamPersonaName + " with given ID.");
+				steamId = steamInfo;
+			}
+
+			else
+			{
+				//They may have entered a vanity url so check that
+				if (webAPI.GetSteamID(steamInfo) != null)
+				{
+					await ReplyAsync("Found Steam ID.");
+					//They sent a name, so set name to appropriate variable
+					steamPersonaName = steamInfo;
+					//Get their ID
+					steamId = webAPI.GetSteamID(steamInfo);
+				}
+				else
+				{
+					await ReplyAsync("Failed to find a Steam profile associated with the given ID or name.");
+					return;
+				}
+			}
+			await ReplyAsync("Attempting to merge Steam games into current library. I may take a while.");
+			Dictionary<ulong, GameLibrary> libraryDic = FileOps.MakeDictionary();
+
+			//Set their steam name and steam ID to their gamelibrary
+			libraryDic[Context.User.Id].SetSteamId(steamId);
+			libraryDic[Context.User.Id].SetSteamName(steamPersonaName);
+
+			//Get http response from steamwebapi, store into object
+			SteamWebAPI.Response response = webAPI.GetSteamResponse(libraryDic[Context.User.Id].SteamId);
+			//Convert response object's List<game> to List<string>
+			List<string> steamgames = webAPI.SteamResponseToList(response);
+			//Games in current user's library
+			List<string> currentgames = libraryDic[Context.User.Id].GetGames();
+			foreach (string game in steamgames)
+			{
+				//If the game doesn't exist in the current library, add it
+				if (!currentgames.Contains(game))
+				{
+					currentgames.Add(game);
+				}
+			}
+			await ReplyAsync("Done!");
+			FileOps.SaveDictionary(libraryDic);
+			//
+		}
+		[Alias("lsl")]
+
+		[RequireOwner]
+		[Command("addsteamaliases")]
+		public async Task AddSteamAliases([Summary("Updates the alias file for the user's Steam ID.")] string steamId)
+		{
+			SteamWebAPI.SteamWebAPIHandler webAPI = new SteamWebAPI.SteamWebAPIHandler();
+			webAPI.PrepareAliases(steamId);
 		}
 
 		[Command("help")]

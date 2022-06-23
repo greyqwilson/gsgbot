@@ -5,6 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using System.Net;
+using discordbot.SteamWebAPI;
 
 namespace discordbot
 {
@@ -14,7 +16,9 @@ namespace discordbot
 		const string PATH = "\\GameLibraries";
 		const string FILENAME = "GameLibraries.json";
 		const string ALIASFILE = "GameAliases.json";
-		
+
+
+
 		public static string ReadLibraries(ref Dictionary<ulong, GameLibrary> gameDic)
 		{
 			//String line;
@@ -132,6 +136,45 @@ namespace discordbot
 			string toWrite = JsonConvert.SerializeObject(aliasTable, Formatting.Indented);
 			await File.WriteAllTextAsync(AppDomain.CurrentDomain.BaseDirectory + PATH + "\\" + ALIASFILE,
 															toWrite, cancellationToken: System.Threading.CancellationToken.None);
+		}
+
+		public async static void SteamLibTest()
+		{
+			//SteamWebAPIHandler webAPI = new SteamWebAPIHandler();
+			//Response response = webAPI.GetSteamResponse();
+			//string toWrite = JsonConvert.SerializeObject(response, Formatting.Indented);
+			//await File.WriteAllTextAsync(AppDomain.CurrentDomain.BaseDirectory + PATH + "\\steamlib.json",
+			//							toWrite, cancellationToken: System.Threading.CancellationToken.None);
+		}
+
+		//Partially implemented. Fully made as command
+		public static void MergeSteamToNativeList(GameLibrary gl)
+		{
+			Dictionary<ulong, GameLibrary> libraryDic = MakeDictionary();
+
+			SteamWebAPIHandler webAPI = new SteamWebAPIHandler();
+			//Get http response from steamwebapi, store into object
+			Response response = webAPI.GetSteamResponse(gl.SteamId);
+			//Convert response object's List<game> to List<string>
+			List<string> steamgames = webAPI.SteamResponseToList(response);
+			//Games in current user's library
+			List<string> currentgames = gl.GetGames();
+			foreach (string game in steamgames)
+			{
+				//If the game doesn't exist in the current library, add it
+				if (!currentgames.Contains(game))
+				{
+					currentgames.Add(game);
+				}
+			}
+			//Access Dictionary and library
+		}
+
+		//Thank you konstantin spirin and pham x. bach stackoverflow
+		public static IEnumerable<string> StringSplit(string str, int chunkSize)
+		{
+			return Enumerable.Range(0, str.Length / chunkSize)
+				.Select(i => str.Substring(i * chunkSize, chunkSize));
 		}
 
 	}
