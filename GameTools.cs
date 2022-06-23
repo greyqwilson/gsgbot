@@ -6,9 +6,15 @@ using System.Threading.Tasks;
 
 namespace discordbot
 {
-	public static class ErrorHandler
+	public class Testa
 	{
-		
-
+		List<string> stringlist;
+		List<SteamWebAPI.Game> gamelist;
+		string convertthis;
+		public Testa()
+		{
+			
+		}
 	}
+
 }

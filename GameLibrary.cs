@@ -12,6 +12,8 @@ namespace discordbot
 	public class GameLibrary
 	{
 		private readonly ulong _owner;
+		private string _steamId;
+		private string _steamName;
 		[JsonProperty("games")]
 		private List<string> _games = new List<string>();
 
@@ -21,6 +23,8 @@ namespace discordbot
 		}
 
 		public ulong Owner => _owner;
+		public string SteamId => _steamId;
+		public string SteamName => _steamName;
 
 		public bool AddGame(string gameName)
 		{
@@ -125,18 +129,16 @@ namespace discordbot
 			}
 			return matches;
 		}
-	}
 
-	public static class GameLibraryHelper
-	{
-		public static bool FindLibrary(ulong dId)
+		public void SetSteamId(string steamId)
 		{
-			return false;
+			_steamId = steamId;
 		}
 
-		public static void RefLibrary(ulong dId)
+		public void SetSteamName(string steamName)
 		{
-
+			_steamName = steamName;
 		}
 	}
+
 }
